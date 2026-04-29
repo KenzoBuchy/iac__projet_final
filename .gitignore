@@ -1,0 +1,13 @@
+# Credentials et clés SSH
+*.pem
+
+# État Terraform (contient des données sensibles)
+*.tfstate
+*.tfstate.backup
+
+# Répertoire de travail Terraform
+.terraform/
+.terraform.lock.hcl
+
+# Variables sensibles
+*.tfvars

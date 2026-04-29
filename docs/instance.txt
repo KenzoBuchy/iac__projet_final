@@ -1,0 +1,136 @@
+
+ID d’instance
+i-08a22d2572fef0f6d
+Adresse IPv4 publique
+
+100.54.238.175 | adresse ouverte 
+Adresses IPv4 privées
+172.31.30.26
+Adresse IPv6
+–
+État de l’instance
+En cours d'exécution
+DNS public
+
+ec2-100-54-238-175.compute-1.amazonaws.com | adresse ouverte 
+Type de nom d'hôte
+Nom de l'adresse IP: ip-172-31-30-26.ec2.internal
+Nom DNS de l’IP privé (IPv4 uniquement)
+ip-172-31-30-26.ec2.internal
+Réponse à un nom DNS de ressource privée
+IPv4 (A)
+Type d'instance
+t3.micro
+Adresses IP élastiques
+–
+Adresse IP attribuée automatiquement
+
+100.54.238.175 [IP publique]
+ID de VPC
+vpc-0a4b52a8333011e4c 
+Recherche d’AWS Compute Optimizer
+Inscrivez-vous à AWS Compute Optimizer pour obtenir des recommandations.
+|
+En savoir plus 
+Rôle IAM
+–
+ID de sous-réseau
+subnet-013f7529e1728ed5c 
+Nom du groupe Auto Scaling
+–
+IMDSv2
+Required
+ARN de l’instance
+arn:aws:ec2:us-east-1:780038397134:instance/i-08a22d2572fef0f6d
+Géré
+faux
+Opérateur
+–
+Détails de l’instance
+Informations
+ID AMI
+
+ami-0ec10929233384c7f
+Surveillance
+désactivé
+Informations sur la plateforme
+Linux/UNIX
+Nom de l'AMI
+ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20260313
+Image autorisée
+-
+Protection de la résiliation
+Désactivé
+Protection contre l'arrêt
+Désactivé
+Heure de lancement
+Tue Apr 28 2026 16:25:24 GMT+0200 (heure d’été d’Europe centrale) (less than a minute)
+Emplacement de l'AMI
+amazon/ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-20260313
+Migration au redémarrage de l’instance
+Par défaut (Activé)
+Récupération automatique de l’instance
+Par défaut
+Cycle de vie
+normal
+Comportement Arrêt - Mise en veille prolongée
+Désactivé
+Index de lancement de l'AMI
+0
+Paire de clés attribuée au lancement
+
+projet_final
+Motif de transition de l'état
+–
+Spécification des crédits
+unlimited
+ID du noyau
+–
+Message de transition de l'état
+–
+Opération d’utilisation
+RunInstances
+ID de disque RAM
+–
+Propriétaire
+780038397134
+Prise en charge d'Enclaves
+Désactivé
+Mode de démarrage
+uefi-preferred
+Mode de démarrage de l'instance actuelle
+uefi
+Autoriser les identifications dans les métadonnées d'instance
+Désactivé
+Utiliser RBN comme nom d'hôte du système d'exploitation invité
+Désactivé
+Répondre à l'IPv4 de nom d'hôte DNS RBN
+Activé
+Hôte et groupe de placement
+Informations
+ID de l’hôte
+–
+Affinité
+–
+Groupe de placement
+–
+Nom du groupe de ressources de l'hôte
+–
+Location
+default
+ID du groupe de placement
+–
+Type de virtualisation
+hvm
+Réservation
+r-072786ebb0e390de8
+Numéro de partition
+–
+Nombre de vCPU
+2
+Réserve de capacité
+Informations
+ID de réserve de capacité
+–
+Paramètre de réserve de capacité
+open
