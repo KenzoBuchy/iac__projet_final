@@ -192,7 +192,6 @@ mysqldump -h <poc_private_ip> -u nodeapp -p --databases STUDENTS > data.sql
 mysql -h <rds_endpoint> -u nodeapp -p STUDENTS < data.sql
 ```
 
-![Migration Cloud9](images/phase2_migration.png)
 
 ### Améliorations apportées vs Phase 1
 
