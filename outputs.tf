@@ -27,3 +27,13 @@ output "cloud9_url" {
   description = "ID de l environnement Cloud9"
   value       = aws_cloud9_environment_ec2.cloud9.id
 }
+
+output "alb_url" {
+  description = "URL de l application via l ALB (Phase 3)"
+  value       = "http://${aws_lb.app.dns_name}"
+}
+
+output "ecr_repository_url" {
+  description = "URL du repository ECR pour docker push (Phase 4)"
+  value       = aws_ecr_repository.app.repository_url
+}

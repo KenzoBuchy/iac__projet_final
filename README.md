@@ -25,9 +25,9 @@ L'Université Exemple fait face à des problèmes de performance et de disponibi
 |---|---|---|
 | Phase 1 | POC — Application monolithique sur EC2 | ✅ Terminée |
 | Phase 2 | Découplage — RDS + Secrets Manager | ✅ Terminée |
-| Phase 3 | Haute disponibilité — ALB + Auto Scaling | 🔜 À venir |
-| Phase 4 | Packaging de l'application | 🔜 À venir |
-| Phase 5 | Pipeline CI/CD | 🔜 À venir |
+| Phase 3 | Haute disponibilité — ALB + Auto Scaling | ✅ Terminée |
+| Phase 4 | Packaging de l'application — Docker + ECR | ✅ Terminée |
+| Phase 5 | Pipeline CI/CD — GitHub Actions | ✅ Terminée |
 | Phase 6 | Orchestrateur de conteneurs | 🔜 À venir |
 | Phase 7 | Amélioration et Optimisation | 🔜 À venir |
 
@@ -60,7 +60,7 @@ Déployer une première version fonctionnelle de l'application sur une seule ins
 ### Infrastructure déployée (Terraform)
 
 - **Security Group** : ports 80 (HTTP) et 22 (SSH) ouverts
-- **EC2** `student-app-server` : Ubuntu 24.04, t3.micro, user data = `solution_code_poc.sh`
+- **EC2** `student-poc-server` : Ubuntu, t3.micro, user data = `solution_code_poc.sh`
 
 ### Preuves de déploiement
 
@@ -192,7 +192,6 @@ mysqldump -h <poc_private_ip> -u nodeapp -p --databases STUDENTS > data.sql
 mysql -h <rds_endpoint> -u nodeapp -p STUDENTS < data.sql
 ```
 
-
 ### Améliorations apportées vs Phase 1
 
 | Problème Phase 1 | Solution Phase 2 |
@@ -211,6 +210,142 @@ mysql -h <rds_endpoint> -u nodeapp -p STUDENTS < data.sql
 
 ---
 
+## Phase 3 — Haute disponibilité : ALB + Auto Scaling
+
+### Objectif
+
+Éliminer le Single Point of Failure en déployant un **Application Load Balancer** devant un **Auto Scaling Group**. L'application est désormais multi-AZ, résiliente aux pannes d'instance, et capable de s'adapter automatiquement à la charge.
+
+### Architecture
+
+```
+                            INTERNET
+                               |
+                          (HTTP:80)
+                               |
+                    ┌──────────────────────┐
+                    │    Internet Gateway   │
+                    └──────────┬───────────┘
+                               |
+          ┌────────────────────────────────────────┐
+          │              VPC  10.0.0.0/16          │
+          │                                        │
+          │  [ALB student-app-alb]                 │
+          │       /               \                │
+          │  ┌──────────────┐  ┌──────────────┐   │
+          │  │ PUBLIC 1a    │  │ PUBLIC 1b    │   │
+          │  │ 10.0.1.0/24  │  │ 10.0.2.0/24  │   │
+          │  │ ASG inst. 1  │  │ ASG inst. 2  │   │
+          │  └──────┬───────┘  └──────┬───────┘   │
+          │         └────────┬─────────┘           │
+          │              MySQL:3306                 │
+          │  ┌─────────────────────────────────┐   │
+          │  │  PRIVÉ 1a  10.0.3.0/24          │   │
+          │  │  [RDS MySQL 8.0]                 │   │
+          │  └─────────────────────────────────┘   │
+          └────────────────────────────────────────┘
+
+              ┌───────────────────────┐
+              │   AWS Secrets Manager  │
+              │   Secret: Mydbsecret   │
+              └───────────────────────┘
+```
+
+### Infrastructure déployée (Terraform)
+
+| Ressource | Détail |
+|---|---|
+| Security Group ALB | `student-alb-sg` — port 80 depuis Internet |
+| ALB | `student-app-alb`, multi-AZ (public_1 + public_2) |
+| Target Group | HTTP:80, health check sur `/`, seuil 2/2 |
+| Listener HTTP | Port 80 → forward vers le target group |
+| Launch Template | AMI Ubuntu t3.micro, user data `code_serveur_app.sh`, `LabInstanceProfile` |
+| Auto Scaling Group | min=1 / desired=2 / max=3, health check ELB, grace period 300s |
+| Scaling Policy | Target Tracking CPU 50% — scale-out et scale-in automatiques |
+
+### Améliorations apportées vs Phase 2
+
+| Problème Phase 2 | Solution Phase 3 |
+|---|---|
+| Single Point of Failure sur l'EC2 | ASG — panne d'instance absorbée automatiquement |
+| Pas de load balancing | ALB distribue le trafic entre toutes les instances saines |
+| Scalabilité manuelle | Target Tracking CPU 50% → scale-out/in automatique |
+| Une seule AZ pour le web | Instances réparties sur us-east-1a et us-east-1b |
+
+### Limites restantes
+
+- Application distribuée via user data (non versionné, démarrage ~5 min par instance)
+- Pas de pipeline de déploiement continu
+
+---
+
+## Phase 4 — Packaging : Docker + ECR
+
+### Objectif
+
+Conteneuriser l'application dans une **image Docker** versionnée et la stocker dans **Amazon ECR**. L'image devient un artefact reproductible, portable et déployable indépendamment de l'infrastructure.
+
+### Infrastructure déployée (Terraform)
+
+| Ressource | Détail |
+|---|---|
+| ECR Repository | `student-app`, tags mutables, `force_delete = true` |
+
+### Composants applicatifs
+
+| Fichier | Rôle |
+|---|---|
+| `Dockerfile` | `node:18-slim`, télécharge l'app depuis S3, installe les dépendances Node.js, expose le port 80 |
+
+> L'image ne contient aucun credential. L'application lit les secrets DB depuis **Secrets Manager** au démarrage via l'AWS SDK — elle a besoin d'un IAM Role (sur EC2) ou de variables AWS en environnement local.
+
+### Améliorations apportées vs Phase 3
+
+| Avant | Après Phase 4 |
+|---|---|
+| Dépendances téléchargées à chaque démarrage d'instance (~5 min) | Image pré-construite, démarrage en quelques secondes |
+| Pas de versioning de l'artefact applicatif | Chaque image taguée `:<sha>` permet un rollback précis |
+| Impossible de tester l'app hors AWS | `docker run` local avec credentials AWS injectés |
+
+### Limites restantes
+
+- Build et push manuels
+- L'ASG utilise encore le user data (pas l'image Docker directement)
+
+---
+
+## Phase 5 — Pipeline CI/CD : GitHub Actions
+
+N'as pas eu le temps d'être tester. Le dernier run ai fail du à un manque de configuration de secret.
+
+### Objectif
+
+Automatiser le cycle complet : **build → test de charge → déploiement**. À chaque push sur `main`, l'image Docker est reconstruite, poussée sur ECR, un test de charge est exécuté sur l'ALB, puis un instance refresh est déclenché sur l'ASG.
+
+### Pipeline
+
+| Job | Déclencheur | Rôle |
+|---|---|---|
+| `build` | push sur `main` | Build Docker, push `:sha` + `:latest` sur ECR |
+| `load-test` | après `build` (si `ALB_URL` configuré) | Test de charge sur l'ALB via `loadtest` |
+| `deploy` | après `build` | Instance refresh ASG — remplacement progressif (min 50% sain) |
+
+### Améliorations apportées vs Phase 4
+
+| Avant | Après Phase 5 |
+|---|---|
+| Build et push manuels | Déclenchés automatiquement à chaque push sur `main` |
+| Déploiement manuel | Instance refresh automatique après succès du build |
+| Aucun test de non-régression | Test de charge intégré avant le déploiement |
+| Risque de déployer sans vérification | Pipeline séquentiel : build → test → deploy |
+
+### Limites restantes
+
+- Secrets AWS Academy (~4h de validité) à mettre à jour manuellement à chaque session
+- Les instances EC2 exécutent le user data (pas le conteneur Docker) — adressé en Phase 6 avec ECS
+
+---
+
 ## Commandes Terraform
 
 ```bash
@@ -223,7 +358,7 @@ terraform plan
 # Déployer l'infrastructure
 terraform apply
 
-# Récupérer les outputs (IPs, endpoint RDS, URL app)
+# Récupérer les outputs (IPs, URL app, endpoint RDS, URL ALB, URL ECR)
 terraform output
 
 # Détruire l'infrastructure
@@ -236,14 +371,33 @@ terraform destroy
 
 ```
 projet_final/
-├── main.tf                  # Ressources AWS (VPC, EC2, RDS, Secrets Manager, Cloud9...)
-├── variables.tf             # Variables (région, type instance, credentials DB)
-├── outputs.tf               # Outputs (IPs, URL app, endpoint RDS)
-├── solution_code_poc.sh     # User data Phase 1 (Node.js + MySQL local)
-├── code_serveur_app.sh      # User data Phase 2 (Node.js → RDS via Secrets Manager)
-├── cloud9-scripts.yml       # Scripts CLI (Script-1: secret, Script-2: load test, Script-3: migration)
+├── providers.tf             # Provider AWS ~5.0, région depuis variable
+├── variables.tf             # Variables : région, type instance, credentials DB
+├── outputs.tf               # Outputs : IPs, URLs app/ALB, endpoint RDS, URL ECR
+├── network.tf               # VPC, Internet Gateway, 4 subnets, route table publique
+├── security_groups.tf       # app_sg (HTTP+SSH), rds_sg (MySQL depuis app_sg)
+├── ec2.tf                   # EC2 poc_server (Phase 1) + app_server (Phase 2)
+├── rds.tf                   # RDS MySQL 8.0 db.t3.micro + subnet group
+├── secrets.tf               # Secrets Manager : Mydbsecret (user/password/host/db)
+├── iam.tf                   # Data source LabInstanceProfile (pré-existant AWS Academy)
+├── cloud9.tf                # Cloud9 Amazon Linux 2023 pour scripts CLI
+├── alb.tf                   # ALB + alb_sg + Target Group + Listener (Phase 3)
+├── asg.tf                   # Launch Template + Auto Scaling Group + Scaling Policy (Phase 3)
+├── ecr.tf                   # ECR Repository student-app (Phase 4)
+├── Dockerfile               # Image Docker de l'application Node.js (Phase 4)
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml        # Pipeline CI/CD GitHub Actions (Phase 5)
+├── scripts/
+│   ├── solution_code_poc.sh # User data Phase 1 : Node.js + MySQL local
+│   └── code_serveur_app.sh  # User data Phase 2/3 : Node.js → RDS via Secrets Manager
+├── docs/
+│   └── cloud9-scripts.yml   # Scripts CLI (Script-1 : secret, Script-2 : load test, Script-3 : migration)
 ├── ETAPE1.md                # Documentation technique Phase 1
 ├── ETAPE2.md                # Documentation technique Phase 2
-├── README.md                # Ce document (synthèse globale)
+├── ETAPE3.md                # Documentation technique Phase 3
+├── ETAPE4.md                # Documentation technique Phase 4
+├── ETAPE5.md                # Documentation technique Phase 5
+├── README.md                # Ce document — synthèse globale
 └── images/                  # Captures d'écran des preuves de déploiement
 ```
